@@ -33,15 +33,22 @@ class PubSubHub
 
       socket = context.socket(opts.type)
 
-      socket.connect opts.queue, =>          
+      socket.connect opts.queue, (res) =>
+
+        if (res?.status == "error")
+          deferred.reject res
 
         @context = context
         @socket = socket
 
         if opts.onSub
           @socket.setEncoding "utf8"
-          @socket.on "data", (data) -> 
-            opts.onSub JSON.parse data
+          @socket.on "data", (data) ->
+            try
+              json = JSON.parse data
+              opts.onSub json
+            catch
+              console.log "Failed to parse data", data
       
         deferred.resolve()      
 
@@ -58,7 +65,8 @@ class PubSubHub
   close: ->
 
     if !@socket
-      throw new Error "Not connected"
+      console.log "close failed, not connected"
+      return
     
     @socket.close()
     @context.close()
